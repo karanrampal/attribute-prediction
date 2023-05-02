@@ -1,0 +1,15 @@
+# System related
+gcsfs
+pyyaml
+types-pyyaml
+# Scipy stack
+numpy
+matplotlib
+scikit-learn
+pandas
+# Deep learning
+torch
+torchvision
+tensorboard
+# Others
+tqdm

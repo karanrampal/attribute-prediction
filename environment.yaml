@@ -1,0 +1,34 @@
+name: attrpred-env
+channels:
+  - pytorch
+dependencies:
+  # System related
+  - python=3.8
+  - pip
+  - build
+  - ipykernel
+  - ipywidget
+  - gcsfs
+  - pyyaml
+  - types-pyyaml
+  # Scipy stack
+  - numpy
+  - matplotlib
+  - scikit-learn
+  - pandas
+  # Deep learning
+  - pytorch
+  - torchvision
+  - cudatoolkit=11.6
+  - tensorboard
+  # Others
+  - tqdm
+  # Testing
+  - pytest
+  - pytest-cov
+  - pytest-mock
+  # Formating, linting
+  - mypy
+  - pylint
+  - black
+  - isort
