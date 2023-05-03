@@ -5,6 +5,7 @@ numpy
 matplotlib
 scikit-learn
 pandas
+pyarrow
 # Deep learning
 torch
 torchvision
