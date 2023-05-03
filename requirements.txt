@@ -1,7 +1,5 @@
 # System related
-gcsfs
 pyyaml
-types-pyyaml
 # Scipy stack
 numpy
 matplotlib
