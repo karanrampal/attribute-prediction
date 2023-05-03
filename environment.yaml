@@ -16,6 +16,7 @@ dependencies:
   - matplotlib
   - scikit-learn
   - pandas
+  - pyarrow
   # Deep learning
   - pytorch
   - torchvision

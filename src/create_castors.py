@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Script for creating castors metadata"""
 
 import argparse
@@ -17,21 +17,21 @@ def arg_parser() -> argparse.Namespace:
     parser.add_argument(
         "-r",
         "--root",
-        default="gs://hm-images-bucket/images/",
+        default="gs://hm_images/images/",
         type=str,
         help="Root directory",
     )
     parser.add_argument(
         "-p",
         "--proj_name",
-        default="smle-attribution-d237",
+        default="airesearch-1409",
         type=str,
         help="Name of project",
     )
     parser.add_argument(
         "-o",
         "--outdir",
-        default="gs://hm-images-bucket/annotations/",
+        default="gs://hm_images/annotations/",
         type=str,
         help="Output directory path",
     )

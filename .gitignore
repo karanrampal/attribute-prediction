@@ -11,6 +11,7 @@ dist/
 .tox/
 .coverage
 .coverage.*
+coverage.*
 .cache
 *.cover
 .pytest_cache/

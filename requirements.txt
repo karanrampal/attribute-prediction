@@ -1,12 +1,11 @@
 # System related
-gcsfs
 pyyaml
-types-pyyaml
 # Scipy stack
 numpy
 matplotlib
 scikit-learn
 pandas
+pyarrow
 # Deep learning
 torch
 torchvision
