@@ -62,7 +62,7 @@ def arg_parser() -> Tuple[argparse.Namespace, List[str]]:
         ],
         nargs="+",
         type=str,
-        help="Columns to use for labels"
+        help="Columns to use for labels",
     )
 
     return parser.parse_known_args()
@@ -114,7 +114,7 @@ def main() -> None:
 
     # Split data into training and test dataset
     logging.info("Split data")
-    gss = GroupShuffleSplit(n_splits=1, train_size=.9, random_state=42)
+    gss = GroupShuffleSplit(n_splits=1, train_size=0.9, random_state=42)
     train_idxs, test_idxs = next(gss.split(X=out.path, groups=out.castor))
     assert not set(out.castor[train_idxs]) & set(out.castor[test_idxs])
     out.drop(columns=["castor"], axis=1, inplace=True)
