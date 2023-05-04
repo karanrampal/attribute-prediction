@@ -14,15 +14,14 @@ plt.style.use("dark_background")
 
 
 def fetch_data(
-    data: pd.DataFrame, label: str, num_samples: int, gfs: gcsfs.core.GCSFileSystem
+    data: pd.DataFrame, num_samples: int, gfs: gcsfs.core.GCSFileSystem
 ) -> List[np.ndarray]:
     """Fetch num_samples of data given the label
     Args:
-        data: Dataframe of paths and labels
-        label: Label to fetch
+        data: Dataframe of paths
         num_samples: Number of samples to fetch
     """
-    sample_paths = data[data.labels == label].sample(n=num_samples).paths.tolist()
+    sample_paths = data.sample(n=num_samples).tolist()
 
     img_list = []
     for path in sample_paths:
@@ -55,3 +54,4 @@ def vis_data(
         if i < num:
             axi.imshow(img_list[i])
         axi.axis("off")
+    plt.tight_layout()
