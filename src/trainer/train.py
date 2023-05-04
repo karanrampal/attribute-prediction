@@ -23,14 +23,14 @@ def args_parser() -> argparse.Namespace:
     parser.add_argument(
         "-d",
         "--data_dir",
-        default="/gcs/hm-images-bucket",
+        default="/gcs/hm_images",
         type=str,
         help="Directory containing the dataset",
     )
     parser.add_argument(
         "-m",
         "--model_dir",
-        default="/gcs/attribute-models-bucket/fit-model",
+        default="/gcs/attributes_models/base_model",
         type=str,
         help="Directory containing model",
     )
@@ -58,7 +58,7 @@ def args_parser() -> argparse.Namespace:
         type=bool,
         help="Pin memory for faster load on GPU",
     )
-    parser.add_argument("--num_classes", default=9, type=int, help="Number of classes")
+    parser.add_argument("--num_classes", default=73, type=int, help="Number of classes")
     parser.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
     parser.add_argument("--learning_rate", default=0.001, type=float, help="Learning rate")
     parser.add_argument("--decay", default=0.0, type=float, help="Decay rate")
@@ -219,10 +219,10 @@ def train_and_evaluate(
             logging.info("- Found new best accuracy")
             best_val_acc = val_acc
 
-            best_yml_path = os.path.join(params.model_dir, "metrics_val_best.yaml")
+            best_yml_path = os.path.join(params.model_dir, "metrics_val_best.yml")
             utils.save_dict_to_yaml(val_metrics, best_yml_path)
 
-    last_yml_path = os.path.join(params.model_dir, "metrics_val_last.yaml")
+    last_yml_path = os.path.join(params.model_dir, "metrics_val_last.yml")
     utils.save_dict_to_yaml(val_metrics, last_yml_path)
 
 

@@ -21,12 +21,12 @@ def args_parser() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--data_dir",
-        default="/gcs/hm-images-bucket",
+        default="/gcs/hm_images",
         help="Directory containing the dataset",
     )
     parser.add_argument(
         "--model_dir",
-        default="/gcs/attribute-models-bucket/fit-model",
+        default="/gcs/attributes_models/base_model",
         help="Directory containing model",
     )
     parser.add_argument(
@@ -51,7 +51,7 @@ def args_parser() -> argparse.Namespace:
         type=bool,
         help="Pin memory for faster load on GPU",
     )
-    parser.add_argument("--num_classes", default=9, type=int, help="Number of classes")
+    parser.add_argument("--num_classes", default=73, type=int, help="Number of classes")
     parser.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
     return parser.parse_args()
 
