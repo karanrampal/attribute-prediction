@@ -1,5 +1,6 @@
 # System related
 pyyaml
+gcsfs
 # Scipy stack
 numpy
 matplotlib
@@ -10,5 +11,7 @@ pyarrow
 torch
 torchvision
 tensorboard
+# GCP
+google-cloud-aiplatform
 # Others
 tqdm
