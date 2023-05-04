@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, Dataset, DistributedSampler
 from utils.utils import Params
 
 
-class AttributePreddataset(Dataset):
+class AttributesDataset(Dataset):
     """Custom class for Attribute prediction dataset
     Args:
         root: Directory containing the dataset
@@ -30,9 +30,6 @@ class AttributePreddataset(Dataset):
         self.data = pd.read_csv(os.path.join(root, file_path))
         self.transforms = transforms
 
-        tmp = self.data[["labels", "product_fit"]].drop_duplicates()
-        self.categories = dict(zip(tmp.labels, tmp.product_fit))
-
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get an item from the dataset given the index idx"""
         row = self.data.iloc[idx]
@@ -41,7 +38,7 @@ class AttributePreddataset(Dataset):
         im_path = os.path.join(self.root, "images", im_name)
         img = Image.open(im_path).convert("RGB")
 
-        labels = torch.as_tensor(row["labels"], dtype=torch.int64)
+        labels = torch.as_tensor(row[1:], dtype=torch.int32)
 
         if self.transforms is not None:
             img = self.transforms(img)
@@ -107,7 +104,7 @@ def get_dataloader(
             }
             shuffle = False
 
-        dataset = AttributePreddataset(root=params.data_dir, **ds_dict)
+        dataset = AttributesDataset(root=params.data_dir, **ds_dict)
         if params.distributed:
             sampler: Optional[DistributedSampler] = DistributedSampler(
                 dataset,

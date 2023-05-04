@@ -1,6 +1,5 @@
 """Define the Network, loss and metrics"""
 
-from functools import partial
 from typing import Callable, Dict
 
 import torch
@@ -30,7 +29,7 @@ class Net(tnn.Module):
         Args:
             x_inp: Batch of images
         Returns:
-            Embeddings and logits
+            logits
         """
         return self.model(x_inp)
 
@@ -43,77 +42,77 @@ def loss_fn(outputs: torch.Tensor, ground_truth: torch.Tensor) -> torch.Tensor:
     Returns:
         loss for all the inputs in the batch
     """
-    criterion = tnn.CrossEntropyLoss()
+    criterion = tnn.BCEWithLogitsLoss()
     loss = criterion(outputs, ground_truth)
     return loss
 
 
-def avg_acc_gpu(outputs: torch.Tensor, labels: torch.Tensor) -> float:
+def avg_acc_gpu(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -> float:
     """Compute the accuracy, given the outputs and labels for all images.
     Args:
         outputs: Logits of the network
         labels: Ground truth labels
+        thr: Threshold
     Returns:
         average accuracy in [0,1]
     """
-    preds = outputs.argmax(dim=1).to(torch.int64)
-    avg_acc = (preds == labels).to(torch.float32).mean()
+    outputs = (torch.sigmoid(outputs) > thr).to(torch.int32)
+    avg_acc = (outputs == labels).all(1).to(torch.float32).mean()
     return avg_acc.item()
 
 
 def avg_f1_score_gpu(
-    outputs: torch.Tensor, labels: torch.Tensor, num_classes: int, eps: float = 1e-7
+    outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5, eps: float = 1e-7
 ) -> float:
     """Compute the F1 score, given the outputs and labels for all images.
     Args:
         outputs: Logits of the network
         labels: Ground truth labels
-        num_classes: Number of classes
+        thr: Threshold
         eps: Epsilon
     Returns:
         average f1 score
     """
-    preds = (outputs).argmax(dim=1).to(torch.int64)
-    pred_ohe = tnn.functional.one_hot(preds, num_classes)
-    label_ohe = tnn.functional.one_hot(labels, num_classes)
+    outputs = (torch.sigmoid(outputs) > thr).to(torch.int32)
 
-    true_pos = (label_ohe * pred_ohe).sum(0)
-    false_pos = ((1 - label_ohe) * pred_ohe).sum(0)
-    false_neg = (label_ohe * (1 - pred_ohe)).sum(0)
+    true_pos = (labels * outputs).sum(0)
+    false_pos = ((1 - labels) * outputs).sum(0)
+    false_neg = (labels * (1 - outputs)).sum(0)
 
     precision = true_pos / (true_pos + false_pos + eps)
     recall = true_pos / (true_pos + false_neg + eps)
     avg_f1 = 2 * (precision * recall) / (precision + recall + eps)
-    wts = label_ohe.sum(0)
+    wts = labels.sum(0)
     wtd_macro_f1 = (avg_f1 * wts).sum() / wts.sum()
 
     return wtd_macro_f1.item()
 
 
-def confusion_matrix(outputs: torch.Tensor, labels: torch.Tensor, num_classes: int) -> torch.Tensor:
+def confusion_matrix(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -> torch.Tensor:
     """Create confusion matrix
     Args:
         outputs: Logits of the network
         labels: Ground truth labels
-        num_classes: Number of classes
+        thr: Threshold
     Returns:
         Confusion matrix as a tensor
     """
-    num = labels.shape[0]
-    conf_mat = torch.zeros((1, num, num_classes, num_classes), dtype=torch.int64)
-    preds = (outputs).argmax(dim=1).to(torch.int64)
-    conf_mat[0, range(num), labels, preds] = 1
-    return conf_mat.sum(1, keepdim=True)
+    conf_mat = torch.zeros((labels.shape[1], 2, 2), dtype=torch.int32)
+    outputs = (torch.sigmoid(outputs) > thr).to(torch.int32)
+
+    conf_mat[:, 0, 0] = ((1 - labels) * (1 - outputs)).sum(0)
+    conf_mat[:, 0, 1] = ((1 - labels) * outputs).sum(0)
+    conf_mat[:, 1, 0] = (labels * (1 - outputs)).sum(0)
+    conf_mat[:, 1, 1] = (labels * outputs).sum(0)
+
+    return conf_mat
 
 
 # Maintain all metrics required during training and evaluation.
-def get_metrics(params: Params) -> Dict[str, Callable]:
-    """Returns a dictionary of all the metrics to be used
-    Args:
-        params: Hyperparameters
-    """
+def get_metrics() -> Dict[str, Callable]:
+    """Returns a dictionary of all the metrics to be used"""
     metrics: Dict[str, Callable] = {
         "accuracy": avg_acc_gpu,
-        "f1-score": partial(avg_f1_score_gpu, num_classes=params.num_classes),
+        "f1-score": avg_f1_score_gpu,
     }
     return metrics
