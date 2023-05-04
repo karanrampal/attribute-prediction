@@ -268,7 +268,7 @@ def main() -> None:
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9, verbose=True)
 
     criterion = loss_fn
-    metrics = get_metrics(params)
+    metrics = get_metrics()
 
     logging.info("Starting training for %d epoch(s)", params.num_epochs)
     train_and_evaluate(

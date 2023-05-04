@@ -130,7 +130,7 @@ def main() -> None:
     writer.add_graph(model, next(iter(test_dl))[0].to(params.device))
 
     criterion = loss_fn
-    metrics = get_metrics(params)
+    metrics = get_metrics()
 
     logging.info("Starting evaluation")
 
