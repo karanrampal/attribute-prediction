@@ -35,6 +35,12 @@ def args_parser() -> argparse.Namespace:
         help="Directory containing model",
     )
     parser.add_argument(
+        "--tb_log_dir",
+        default=os.getenv("AIP_TENSORBOARD_LOG_DIR"),
+        type=str,
+        help="TensorBoard summarywriter directory",
+    )
+    parser.add_argument(
         "-r",
         "--restore_file",
         default=None,
@@ -48,8 +54,9 @@ def args_parser() -> argparse.Namespace:
         type=bool,
         help="Whether to use distributed computing",
     )
-    parser.add_argument("--height", default=224, type=int, help="Image height")
-    parser.add_argument("-w", "--width", default=224, type=int, help="Image width")
+    parser.add_argument("--height", default=256, type=int, help="Image height")
+    parser.add_argument("-w", "--width", default=256, type=int, help="Image width")
+    parser.add_argument("--crop", default=224, type=int, help="Center crop image")
     parser.add_argument("--batch_size", default=256, type=int, help="Batch size")
     parser.add_argument("--num_workers", default=2, type=int, help="Number of workers to load data")
     parser.add_argument(
@@ -58,12 +65,18 @@ def args_parser() -> argparse.Namespace:
         type=bool,
         help="Pin memory for faster load on GPU",
     )
-    parser.add_argument("--num_classes", default=73, type=int, help="Number of classes")
+    parser.add_argument("--num_classes", default=72, type=int, help="Number of classes")
     parser.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
     parser.add_argument("--learning_rate", default=0.001, type=float, help="Learning rate")
     parser.add_argument("--decay", default=0.0, type=float, help="Decay rate")
     parser.add_argument("--policy", default="steps", type=str, help="Learning rate scheduler")
-    parser.add_argument("--steps", default=[5, 10], help="Steps for learning rate scheduler")
+    parser.add_argument(
+        "--steps",
+        default=[
+            10,
+        ],
+        help="Steps for learning rate scheduler",
+    )
     parser.add_argument(
         "--save_summary_steps", default=100, type=int, help="Save after number of steps"
     )
@@ -231,7 +244,7 @@ def main() -> None:
     args = args_parser()
     params = utils.Params(vars(args))
 
-    writer = SummaryWriter(os.getenv("AIP_TENSORBOARD_LOG_DIR"))
+    writer = SummaryWriter(params.tb_log_dir.replace("gs://", "/gcs/"))
 
     params.cuda = torch.cuda.is_available()
 
@@ -244,6 +257,7 @@ def main() -> None:
 
     utils.set_logger()
 
+    logging.info("Configurations: %s", str(params))
     logging.info("Loading the datasets...")
 
     dataloaders = get_dataloader(["train", "val"], params)
@@ -267,7 +281,7 @@ def main() -> None:
     else:
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9, verbose=True)
 
-    criterion = loss_fn
+    criterion = loss_fn(params)
     metrics = get_metrics()
 
     logging.info("Starting training for %d epoch(s)", params.num_epochs)
