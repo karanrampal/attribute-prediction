@@ -36,6 +36,10 @@ class Params:
                 "Input should either be a dictionary or a string path to a config file!"
             )
 
+    def __str__(self) -> str:
+        """Print instance"""
+        return str(self.__dict__)
+
 
 class SmoothedValue:
     """Track a series of values and provide access to smoothed values over a
