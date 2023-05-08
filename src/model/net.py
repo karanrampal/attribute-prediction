@@ -4,7 +4,7 @@ from typing import Callable, Dict
 
 import torch
 import torch.nn as tnn
-from torchvision import models
+from torchvision.models import EfficientNet_V2_M_Weights, efficientnet_v2_m
 
 from utils.utils import Params
 
@@ -19,9 +19,10 @@ class Net(tnn.Module):
         """
         super().__init__()
 
-        self.model = models.resnet18(pretrained=True)
-        in_feats = self.model.fc.in_features
-        self.model.fc = tnn.Linear(in_features=in_feats, out_features=params.num_classes)
+        self.preprocess = EfficientNet_V2_M_Weights.DEFAULT.transforms()
+        self.model = efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT)
+        in_feats = self.model.classifier[1].in_features
+        self.model.classifier[1] = tnn.Linear(in_features=in_feats, out_features=params.num_classes)
         self.dropout_rate = params.dropout
 
     def forward(self, x_inp: torch.Tensor) -> torch.Tensor:
@@ -34,17 +35,89 @@ class Net(tnn.Module):
         return self.model(x_inp)
 
 
-def loss_fn(outputs: torch.Tensor, ground_truth: torch.Tensor) -> torch.Tensor:
+def loss_fn(params: Params) -> Callable:
     """Compute the loss given outputs and ground_truth.
     Args:
-        outputs: Logits of network forward pass
-        ground_truth: Batch of ground truth
+        params: Hyper-parameters
     Returns:
-        loss for all the inputs in the batch
+        loss function
     """
-    criterion = tnn.BCEWithLogitsLoss()
-    loss = criterion(outputs, ground_truth)
-    return loss
+    wts = [
+        1.0,
+        22.0,
+        37.0,
+        11.0,
+        7.0,
+        17.0,
+        65.0,
+        10.0,
+        366.0,
+        252.0,
+        4.0,
+        8.0,
+        12.0,
+        122.0,
+        50.0,
+        55.0,
+        844.0,
+        50.0,
+        8.0,
+        1440.0,
+        31.0,
+        985.0,
+        6.0,
+        9.0,
+        669.0,
+        17.0,
+        19.0,
+        771.0,
+        26.0,
+        8.0,
+        20.0,
+        80.0,
+        21.0,
+        368.0,
+        111.0,
+        1822.0,
+        541.0,
+        340.0,
+        1329.0,
+        266.0,
+        83.0,
+        48.0,
+        1329.0,
+        3814.0,
+        432.0,
+        1622.0,
+        163.0,
+        80.0,
+        260.0,
+        187.0,
+        7.0,
+        102.0,
+        122.0,
+        262.0,
+        17.0,
+        322.0,
+        2101.0,
+        438.0,
+        8238.0,
+        2145.0,
+        592.0,
+        936.0,
+        353.0,
+        375.0,
+        1775.0,
+        2019.0,
+        261.0,
+        1157.0,
+        9361.0,
+        940.0,
+        37.0,
+        40.0,
+    ]
+    criterion = tnn.BCEWithLogitsLoss(pos_weight=torch.as_tensor(wts, device=params.device))
+    return criterion
 
 
 def avg_acc_gpu(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -> float:
@@ -56,7 +129,7 @@ def avg_acc_gpu(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -
     Returns:
         average accuracy in [0,1]
     """
-    outputs = (torch.sigmoid(outputs) > thr).to(torch.int32)
+    outputs = (torch.sigmoid(outputs) > thr).to(torch.float32)
     avg_acc = (outputs == labels).all(1).to(torch.float32).mean()
     return avg_acc.item()
 
