@@ -4,7 +4,7 @@ from typing import Callable, Dict
 
 import torch
 import torch.nn as tnn
-from torchvision.models import EfficientNet_V2_M_Weights, efficientnet_v2_m
+from torchvision.models import EfficientNet_V2_S_Weights, efficientnet_v2_s
 
 from utils.utils import Params
 
@@ -19,8 +19,8 @@ class Net(tnn.Module):
         """
         super().__init__()
 
-        self.preprocess = EfficientNet_V2_M_Weights.DEFAULT.transforms()
-        self.model = efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT)
+        self.preprocess = EfficientNet_V2_S_Weights.DEFAULT.transforms()
+        self.model = efficientnet_v2_s(weights=EfficientNet_V2_S_Weights.DEFAULT)
         in_feats = self.model.classifier[1].in_features
         self.model.classifier[1] = tnn.Linear(in_features=in_feats, out_features=params.num_classes)
         self.dropout_rate = params.dropout
