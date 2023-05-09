@@ -4,7 +4,7 @@ from typing import Callable, Dict
 
 import torch
 import torch.nn as tnn
-from torchvision.models import EfficientNet_V2_S_Weights, efficientnet_v2_s
+from torchvision.models import ResNet50_Weights, resnet50
 
 from utils.utils import Params
 
@@ -19,10 +19,10 @@ class Net(tnn.Module):
         """
         super().__init__()
 
-        self.preprocess = EfficientNet_V2_S_Weights.DEFAULT.transforms()
-        self.model = efficientnet_v2_s(weights=EfficientNet_V2_S_Weights.DEFAULT)
-        in_feats = self.model.classifier[1].in_features
-        self.model.classifier[1] = tnn.Linear(in_features=in_feats, out_features=params.num_classes)
+        self.preprocess = ResNet50_Weights.DEFAULT.transforms()
+        self.model = resnet50(weights=ResNet50_Weights.DEFAULT)
+        in_feats = self.model.fc.in_features
+        self.model.fc = tnn.Linear(in_features=in_feats, out_features=params.num_classes)
         self.dropout_rate = params.dropout
 
     def forward(self, x_inp: torch.Tensor) -> torch.Tensor:
@@ -156,7 +156,7 @@ def avg_f1_score_gpu(
     recall = true_pos / (true_pos + false_neg + eps)
     avg_f1 = 2 * (precision * recall) / (precision + recall + eps)
     wts = labels.sum(0)
-    wtd_macro_f1 = (avg_f1 * wts).sum() / wts.sum()
+    wtd_macro_f1 = (avg_f1 * wts).sum() / (wts.sum() + eps)
 
     return wtd_macro_f1.item()
 
