@@ -10,8 +10,6 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-plt.style.use("dark_background")
-
 
 def fetch_data(
     data: pd.DataFrame, num_samples: int, gfs: gcsfs.core.GCSFileSystem
@@ -20,6 +18,7 @@ def fetch_data(
     Args:
         data: Dataframe of paths
         num_samples: Number of samples to fetch
+        gfs: GCSFS file system object
     """
     sample_paths = data.sample(n=num_samples).tolist()
 

@@ -5,8 +5,8 @@ REQ := requirements_all.txt
 # Docker
 PROJECT := airesearch-1409
 LOCATION := europe-west4
-REGISTRY := api-store
-IMG := measurement:latest
+REGISTRY := attributes-model
+IMG := attributes:v0.1
 
 install: $(CONDAENV)
 	conda env create -f $(CONDAENV)

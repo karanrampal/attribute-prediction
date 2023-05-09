@@ -21,13 +21,19 @@ def args_parser() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--data_dir",
-        default="/gcs/hm-images-bucket",
+        default="/gcs/hm_images",
         help="Directory containing the dataset",
     )
     parser.add_argument(
         "--model_dir",
-        default="/gcs/attribute-models-bucket/fit-model",
+        default="/gcs/attributes_models/base_model",
         help="Directory containing model",
+    )
+    parser.add_argument(
+        "--tb_log_dir",
+        default=os.getenv("AIP_TENSORBOARD_LOG_DIR"),
+        type=str,
+        help="TensorBoard summarywriter directory",
     )
     parser.add_argument(
         "--restore_file",
@@ -41,8 +47,9 @@ def args_parser() -> argparse.Namespace:
         type=bool,
         help="Whether to use distributed computing",
     )
-    parser.add_argument("--height", default=224, type=int, help="Image height")
-    parser.add_argument("-w", "--width", default=224, type=int, help="Image width")
+    parser.add_argument("--height", default=256, type=int, help="Image height")
+    parser.add_argument("-w", "--width", default=256, type=int, help="Image width")
+    parser.add_argument("--crop", default=224, type=int, help="Center crop image")
     parser.add_argument("--batch_size", default=256, type=int, help="Batch size")
     parser.add_argument("--num_workers", default=2, type=int, help="Number of workers to load data")
     parser.add_argument(
@@ -51,7 +58,7 @@ def args_parser() -> argparse.Namespace:
         type=bool,
         help="Pin memory for faster load on GPU",
     )
-    parser.add_argument("--num_classes", default=9, type=int, help="Number of classes")
+    parser.add_argument("--num_classes", default=72, type=int, help="Number of classes")
     parser.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
     return parser.parse_args()
 
@@ -104,7 +111,7 @@ def main() -> None:
     args = args_parser()
     params = utils.Params(vars(args))
 
-    writer = SummaryWriter(os.getenv("AIP_TENSORBOARD_LOG_DIR"))
+    writer = SummaryWriter(params.tb_log_dir.replace("gs://", "/gcs/"))
 
     params.cuda = torch.cuda.is_available()
 
@@ -117,6 +124,7 @@ def main() -> None:
 
     utils.set_logger()
 
+    logging.info("Configurations: %s", str(params))
     logging.info("Loading the dataset...")
 
     dataloaders = get_dataloader(["val"], params)
@@ -129,7 +137,7 @@ def main() -> None:
         model = model.to(params.device)
     writer.add_graph(model, next(iter(test_dl))[0].to(params.device))
 
-    criterion = loss_fn
+    criterion = loss_fn(params)
     metrics = get_metrics()
 
     logging.info("Starting evaluation")

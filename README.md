@@ -19,7 +19,8 @@ pip install <path to wheel file>
 ```
 Then create the dataset by running the following command (this needs to be done only once, and can be done at anytime after cloning this repo),
 ```
-python create_labels.py -r <path to root dir>
+./src/create_castors.py -r <path to root dir of images> -p <project name> -o <output directory path>
+./src/create_dataset.py -c <path to castors> -p <path to pim table> -d <path to padma table> -o <output dir path>
 ```
 Then to start training on a single node with multiple gpu's we can do the following,
 ```

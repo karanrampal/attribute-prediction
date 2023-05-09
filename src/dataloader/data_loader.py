@@ -38,7 +38,7 @@ class AttributesDataset(Dataset):
         im_path = os.path.join(self.root, "images", im_name)
         img = Image.open(im_path).convert("RGB")
 
-        labels = torch.as_tensor(row[1:], dtype=torch.int32)
+        labels = torch.as_tensor(row[1:], dtype=torch.float32)
 
         if self.transforms is not None:
             img = self.transforms(img)
@@ -60,6 +60,7 @@ def get_transform(is_train: bool, params: Params) -> tvt.Compose:
     """
     trans = [
         tvt.Resize((params.height, params.width)),
+        tvt.CenterCrop(params.crop),
         tvt.ToTensor(),
         tvt.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ]

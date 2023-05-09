@@ -22,6 +22,8 @@ dependencies:
   - torchvision
   - cudatoolkit=11.6
   - tensorboard
+  # GCP
+  - google-cloud-aiplatform
   # Others
   - tqdm
   # Testing
