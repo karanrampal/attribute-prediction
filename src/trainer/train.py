@@ -125,7 +125,7 @@ def train(
     dataloader: DataLoader,
     metrics: Dict[str, Any],
     params: utils.Params,
-    writer: SummaryWriter,
+    writer: Optional[SummaryWriter],
     epoch: int,
 ) -> None:
     """Train the model.
@@ -166,8 +166,9 @@ def train(
                 summary_batch = utils.reduce_dict(summary_batch)
             summ.append(summary_batch)
 
-            tmp = {k: v.item() for k, v in summary_batch.items()}
-            writer.add_scalars("train", tmp, epoch * len(dataloader) + i)
+            if params.rank == 0 and writer:
+                tmp = {k: v.item() for k, v in summary_batch.items()}
+                writer.add_scalars("train", tmp, epoch * len(dataloader) + i)
 
     scheduler.step()
     metrics_mean = {metric: np.mean([x[metric].item() for x in summ]) for metric in summ[0]}
@@ -185,7 +186,7 @@ def train_and_evaluate(
     scheduler: torch.optim.lr_scheduler._LRScheduler,
     metrics: Dict[str, Any],
     params: utils.Params,
-    writer: SummaryWriter,
+    writer: Optional[SummaryWriter],
 ) -> None:
     """Train the model and evaluate every epoch.
     Args:
@@ -258,10 +259,12 @@ def main() -> None:
     args = args_parser()
     params = utils.Params(vars(args))
 
-    writer = SummaryWriter(params.tb_log_dir.replace("gs://", "/gcs/"))
-
     params.cuda = torch.cuda.is_available()
     utils.setup_distributed(params)
+
+    writer = (
+        SummaryWriter(params.tb_log_dir.replace("gs://", "/gcs/")) if params.rank == 0 else None
+    )
 
     torch.manual_seed(230)
     if params.cuda:
@@ -282,9 +285,10 @@ def main() -> None:
     logging.info("- done.")
 
     model: Union[DistributedDataParallel, torch.nn.Module] = Net(params)
-    writer.add_graph(model, next(iter(train_dl))[0])
     if params.cuda:
         model = model.to(params.device)
+    if params.rank == 0 and writer:
+        writer.add_graph(model, next(iter(train_dl))[0].to(params.device))
     if params.distributed:
         model = DistributedDataParallel(model, device_ids=[params.local_rank])
 
@@ -314,7 +318,9 @@ def main() -> None:
         params,
         writer,
     )
-    writer.close()
+
+    if params.rank == 0 and writer:
+        writer.close()
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@
 import argparse
 import logging
 import os
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 import numpy as np
 import torch
@@ -76,7 +76,7 @@ def evaluate(
     dataloader: DataLoader,
     metrics: Dict[str, Any],
     params: utils.Params,
-    writer: SummaryWriter,
+    writer: Optional[SummaryWriter],
     epoch: int,
 ) -> Dict[str, Any]:
     """Evaluate the model on `num_steps` batches.
@@ -107,7 +107,9 @@ def evaluate(
                 summary_batch = utils.reduce_dict(summary_batch)
             summ.append(summary_batch)
 
-            writer.add_scalars("test", summary_batch, epoch * len(dataloader) + i)
+            if params.rank == 0 and writer:
+                tmp = {k: v.item() for k, v in summary_batch.items()}
+                writer.add_scalars("test", tmp, epoch * len(dataloader) + i)
 
     metrics_mean = {metric: np.mean([x[metric].item() for x in summ]) for metric in summ[0]}
     metrics_string = " ; ".join(f"{k}: {v:05.3f}" for k, v in metrics_mean.items())
@@ -120,10 +122,12 @@ def main() -> None:
     args = args_parser()
     params = utils.Params(vars(args))
 
-    writer = SummaryWriter(params.tb_log_dir.replace("gs://", "/gcs/"))
-
     params.cuda = torch.cuda.is_available()
     utils.setup_distributed(params)
+
+    writer = (
+        SummaryWriter(params.tb_log_dir.replace("gs://", "/gcs/")) if params.rank == 0 else None
+    )
 
     torch.manual_seed(230)
     if params.cuda:
@@ -143,9 +147,10 @@ def main() -> None:
     logging.info("- done.")
 
     model: Union[DistributedDataParallel, torch.nn.Module] = Net(params)
-    writer.add_graph(model, next(iter(test_dl))[0])
     if params.cuda:
         model = model.to(params.device)
+    if params.rank == 0 and writer:
+        writer.add_graph(model, next(iter(test_dl))[0].to(params.device))
     if params.distributed:
         model = DistributedDataParallel(model, device_ids=[params.local_rank])
 
@@ -158,7 +163,8 @@ def main() -> None:
 
     evaluate(model, criterion, test_dl, metrics, params, writer, 0)
 
-    writer.close()
+    if params.rank == 0 and writer:
+        writer.close()
 
 
 if __name__ == "__main__":
