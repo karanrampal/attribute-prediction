@@ -120,7 +120,7 @@ def loss_fn(params: Params) -> Callable:
     return criterion
 
 
-def avg_acc_gpu(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -> float:
+def avg_acc_gpu(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -> torch.Tensor:
     """Compute the accuracy, given the outputs and labels for all images.
     Args:
         outputs: Logits of the network
@@ -131,12 +131,12 @@ def avg_acc_gpu(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -
     """
     outputs = (torch.sigmoid(outputs) > thr).to(torch.float32)
     avg_acc = (outputs == labels).all(1).to(torch.float32).mean()
-    return avg_acc.item()
+    return avg_acc
 
 
 def avg_f1_score_gpu(
     outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5, eps: float = 1e-7
-) -> float:
+) -> torch.Tensor:
     """Compute the F1 score, given the outputs and labels for all images.
     Args:
         outputs: Logits of the network
@@ -158,7 +158,7 @@ def avg_f1_score_gpu(
     wts = labels.sum(0)
     wtd_macro_f1 = (avg_f1 * wts).sum() / (wts.sum() + eps)
 
-    return wtd_macro_f1.item()
+    return wtd_macro_f1
 
 
 def confusion_matrix(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -> torch.Tensor:

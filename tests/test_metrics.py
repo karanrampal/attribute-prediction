@@ -30,7 +30,7 @@ def test_accuracy() -> None:
     output, preds, labels = _create_data()
 
     sk_acc = accuracy_score(labels.numpy(), preds.numpy())
-    my_acc = avg_acc_gpu(output, labels)
+    my_acc = avg_acc_gpu(output, labels).item()
 
     assert np.isclose(sk_acc, my_acc)
 
@@ -40,7 +40,7 @@ def test_f1() -> None:
     output, preds, labels = _create_data()
 
     sk_f1 = f1_score(labels.numpy(), preds.numpy(), average="weighted")
-    my_f1 = avg_f1_score_gpu(output, labels)
+    my_f1 = avg_f1_score_gpu(output, labels).item()
 
     assert np.isclose(sk_f1, my_f1)
 
