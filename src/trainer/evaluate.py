@@ -4,10 +4,11 @@
 import argparse
 import logging
 import os
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Union
 
 import numpy as np
 import torch
+from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
@@ -42,10 +43,16 @@ def args_parser() -> argparse.Namespace:
         help="name of the file in --model_dir containing weights to load",
     )
     parser.add_argument(
-        "--distributed",
-        default=False,
-        type=bool,
-        help="Whether to use distributed computing",
+        "--world_size",
+        type=int,
+        default=os.environ.get("WORLD_SIZE", 1),
+        help="The total number of nodes in the cluster",
+    )
+    parser.add_argument(
+        "--rank",
+        type=int,
+        default=os.environ.get("RANK", 0),
+        help="Identifier for each node",
     )
     parser.add_argument("--height", default=256, type=int, help="Image height")
     parser.add_argument("-w", "--width", default=256, type=int, help="Image width")
@@ -95,12 +102,14 @@ def evaluate(
             loss = criterion(output, labels)
 
             summary_batch = {metric: metrics[metric](output, labels) for metric in metrics}
-            summary_batch["loss"] = loss.item()
+            summary_batch["loss"] = loss.detach()
+            if params.distributed:
+                summary_batch = utils.reduce_dict(summary_batch)
             summ.append(summary_batch)
 
             writer.add_scalars("test", summary_batch, epoch * len(dataloader) + i)
 
-    metrics_mean = {metric: np.mean([x[metric] for x in summ]) for metric in summ[0]}
+    metrics_mean = {metric: np.mean([x[metric].item() for x in summ]) for metric in summ[0]}
     metrics_string = " ; ".join(f"{k}: {v:05.3f}" for k, v in metrics_mean.items())
     logging.info("- Eval metrics : %s", metrics_string)
     return metrics_mean
@@ -114,11 +123,12 @@ def main() -> None:
     writer = SummaryWriter(params.tb_log_dir.replace("gs://", "/gcs/"))
 
     params.cuda = torch.cuda.is_available()
+    utils.setup_distributed(params)
 
     torch.manual_seed(230)
     if params.cuda:
         torch.cuda.manual_seed(230)
-        params.device = "cuda:0"
+        params.device = f"cuda:{params.local_rank}"
     else:
         params.device = "cpu"
 
@@ -132,10 +142,12 @@ def main() -> None:
 
     logging.info("- done.")
 
-    model = Net(params)
+    model: Union[DistributedDataParallel, torch.nn.Module] = Net(params)
+    writer.add_graph(model, next(iter(test_dl))[0])
     if params.cuda:
         model = model.to(params.device)
-    writer.add_graph(model, next(iter(test_dl))[0].to(params.device))
+    if params.distributed:
+        model = DistributedDataParallel(model, device_ids=[params.local_rank])
 
     criterion = loss_fn(params)
     metrics = get_metrics()
