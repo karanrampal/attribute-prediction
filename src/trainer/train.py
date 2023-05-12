@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, Optional, Union
 
 import numpy as np
 import torch
+import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, DistributedSampler
 from torch.utils.tensorboard import SummaryWriter
@@ -31,13 +32,17 @@ def args_parser() -> argparse.Namespace:
     parser.add_argument(
         "-m",
         "--model_dir",
-        default="/gcs/attributes_models/base_model",
+        default=os.getenv("AIP_MODEL_DIR", "gs://attributes_models/base_model/model").replace(
+            "gs://", "/gcs/"
+        ),
         type=str,
         help="Directory containing model",
     )
     parser.add_argument(
         "--tb_log_dir",
-        default=os.getenv("AIP_TENSORBOARD_LOG_DIR"),
+        default=os.getenv(
+            "AIP_TENSORBOARD_LOG_DIR", "gs://attributes_models/base_model/logs"
+        ).replace("gs://", "/gcs/"),
         type=str,
         help="TensorBoard summarywriter directory",
     )
@@ -61,10 +66,10 @@ def args_parser() -> argparse.Namespace:
         default=os.environ.get("RANK", 0),
         help="Identifier for each node",
     )
-    parser.add_argument("--height", default=256, type=int, help="Image height")
-    parser.add_argument("-w", "--width", default=256, type=int, help="Image width")
+    parser.add_argument("--height", default=232, type=int, help="Image height")
+    parser.add_argument("-w", "--width", default=232, type=int, help="Image width")
     parser.add_argument("--crop", default=224, type=int, help="Center crop image")
-    parser.add_argument("--batch_size", default=256, type=int, help="Batch size")
+    parser.add_argument("--batch_size", default=128, type=int, help="Batch size")
     parser.add_argument("--num_workers", default=2, type=int, help="Number of workers to load data")
     parser.add_argument(
         "--pin_memory",
@@ -85,9 +90,9 @@ def args_parser() -> argparse.Namespace:
         help="Steps for learning rate scheduler",
     )
     parser.add_argument(
-        "--save_summary_steps", default=100, type=int, help="Save after number of steps"
+        "--save_summary_steps", default=500, type=int, help="Save after number of steps"
     )
-    parser.add_argument("--num_epochs", default=10, type=int, help="Number of epochs")
+    parser.add_argument("--num_epochs", default=50, type=int, help="Number of epochs")
 
     # Augmentation related arguments
     parser.add_argument("-f", "--flip", default=0.5, type=float, help="Probability to flip image")
@@ -262,9 +267,7 @@ def main() -> None:
     params.cuda = torch.cuda.is_available()
     utils.setup_distributed(params)
 
-    writer = (
-        SummaryWriter(params.tb_log_dir.replace("gs://", "/gcs/")) if params.rank == 0 else None
-    )
+    writer = SummaryWriter(params.tb_log_dir) if params.rank == 0 else None
 
     torch.manual_seed(230)
     if params.cuda:
@@ -321,6 +324,8 @@ def main() -> None:
 
     if params.rank == 0 and writer:
         writer.close()
+    if params.distributed:
+        dist.destroy_process_group()
 
 
 if __name__ == "__main__":
