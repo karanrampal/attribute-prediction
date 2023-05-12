@@ -4,10 +4,12 @@
 import argparse
 import logging
 import os
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional, Union
 
 import numpy as np
 import torch
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
@@ -26,12 +28,16 @@ def args_parser() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model_dir",
-        default="/gcs/attributes_models/base_model",
+        default=os.getenv("AIP_MODEL_DIR", "gs://attributes_models/base_model/model").replace(
+            "gs://", "/gcs/"
+        ),
         help="Directory containing model",
     )
     parser.add_argument(
         "--tb_log_dir",
-        default=os.getenv("AIP_TENSORBOARD_LOG_DIR"),
+        default=os.getenv(
+            "AIP_TENSORBOARD_LOG_DIR", "gs://attributes_models/base_model/logs"
+        ).replace("gs://", "/gcs/"),
         type=str,
         help="TensorBoard summarywriter directory",
     )
@@ -42,15 +48,21 @@ def args_parser() -> argparse.Namespace:
         help="name of the file in --model_dir containing weights to load",
     )
     parser.add_argument(
-        "--distributed",
-        default=False,
-        type=bool,
-        help="Whether to use distributed computing",
+        "--world_size",
+        type=int,
+        default=os.environ.get("WORLD_SIZE", 1),
+        help="The total number of nodes in the cluster",
     )
-    parser.add_argument("--height", default=256, type=int, help="Image height")
-    parser.add_argument("-w", "--width", default=256, type=int, help="Image width")
+    parser.add_argument(
+        "--rank",
+        type=int,
+        default=os.environ.get("RANK", 0),
+        help="Identifier for each node",
+    )
+    parser.add_argument("--height", default=232, type=int, help="Image height")
+    parser.add_argument("-w", "--width", default=232, type=int, help="Image width")
     parser.add_argument("--crop", default=224, type=int, help="Center crop image")
-    parser.add_argument("--batch_size", default=256, type=int, help="Batch size")
+    parser.add_argument("--batch_size", default=128, type=int, help="Batch size")
     parser.add_argument("--num_workers", default=2, type=int, help="Number of workers to load data")
     parser.add_argument(
         "--pin_memory",
@@ -69,7 +81,7 @@ def evaluate(
     dataloader: DataLoader,
     metrics: Dict[str, Any],
     params: utils.Params,
-    writer: SummaryWriter,
+    writer: Optional[SummaryWriter],
     epoch: int,
 ) -> Dict[str, Any]:
     """Evaluate the model on `num_steps` batches.
@@ -95,12 +107,16 @@ def evaluate(
             loss = criterion(output, labels)
 
             summary_batch = {metric: metrics[metric](output, labels) for metric in metrics}
-            summary_batch["loss"] = loss.item()
+            summary_batch["loss"] = loss.detach()
+            if params.distributed:
+                summary_batch = utils.reduce_dict(summary_batch)
             summ.append(summary_batch)
 
-            writer.add_scalars("test", summary_batch, epoch * len(dataloader) + i)
+            if params.rank == 0 and writer:
+                tmp = {k: v.item() for k, v in summary_batch.items()}
+                writer.add_scalars("test", tmp, epoch * len(dataloader) + i)
 
-    metrics_mean = {metric: np.mean([x[metric] for x in summ]) for metric in summ[0]}
+    metrics_mean = {metric: np.mean([x[metric].item() for x in summ]) for metric in summ[0]}
     metrics_string = " ; ".join(f"{k}: {v:05.3f}" for k, v in metrics_mean.items())
     logging.info("- Eval metrics : %s", metrics_string)
     return metrics_mean
@@ -111,14 +127,15 @@ def main() -> None:
     args = args_parser()
     params = utils.Params(vars(args))
 
-    writer = SummaryWriter(params.tb_log_dir.replace("gs://", "/gcs/"))
-
     params.cuda = torch.cuda.is_available()
+    utils.setup_distributed(params)
+
+    writer = SummaryWriter(params.tb_log_dir) if params.rank == 0 else None
 
     torch.manual_seed(230)
     if params.cuda:
         torch.cuda.manual_seed(230)
-        params.device = "cuda:0"
+        params.device = f"cuda:{params.local_rank}"
     else:
         params.device = "cpu"
 
@@ -132,10 +149,13 @@ def main() -> None:
 
     logging.info("- done.")
 
-    model = Net(params)
+    model: Union[DistributedDataParallel, torch.nn.Module] = Net(params)
     if params.cuda:
         model = model.to(params.device)
-    writer.add_graph(model, next(iter(test_dl))[0].to(params.device))
+    if params.rank == 0 and writer:
+        writer.add_graph(model, next(iter(test_dl))[0].to(params.device))
+    if params.distributed:
+        model = DistributedDataParallel(model, device_ids=[params.local_rank])
 
     criterion = loss_fn(params)
     metrics = get_metrics()
@@ -146,7 +166,10 @@ def main() -> None:
 
     evaluate(model, criterion, test_dl, metrics, params, writer, 0)
 
-    writer.close()
+    if params.rank == 0 and writer:
+        writer.close()
+    if params.distributed:
+        dist.destroy_process_group()
 
 
 if __name__ == "__main__":

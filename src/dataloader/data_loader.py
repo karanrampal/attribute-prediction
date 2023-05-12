@@ -1,5 +1,6 @@
 """Define custom dataset class extending the Pytorch Dataset class"""
 
+import io
 import os
 from typing import Callable, Dict, List, Optional, Tuple
 
@@ -17,6 +18,7 @@ class AttributesDataset(Dataset):
     Args:
         root: Directory containing the dataset
         file_path: Path of the train/val/test file relative to the root
+        gfs: GCSFS GCP project fs object
         transforms: Data augmentation to be done
     """
 
@@ -25,10 +27,12 @@ class AttributesDataset(Dataset):
         root: str,
         file_path: str,
         transforms: Optional[Callable] = None,
+        gfs: Optional[Callable] = None,
     ) -> None:
         self.root = root
         self.data = pd.read_csv(os.path.join(root, file_path))
         self.transforms = transforms
+        self.gfs = gfs
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get an item from the dataset given the index idx"""
@@ -36,7 +40,10 @@ class AttributesDataset(Dataset):
 
         im_name = row["path"]
         im_path = os.path.join(self.root, "images", im_name)
-        img = Image.open(im_path).convert("RGB")
+        if self.gfs:
+            img = Image.open(io.BytesIO(self.gfs.open(im_path).read())).convert("RGB")
+        else:
+            img = Image.open(im_path).convert("RGB")
 
         labels = torch.as_tensor(row[1:], dtype=torch.float32)
 

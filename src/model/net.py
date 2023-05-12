@@ -44,83 +44,83 @@ def loss_fn(params: Params) -> Callable:
     """
     wts = [
         1.0,
-        22.0,
-        37.0,
-        11.0,
-        7.0,
-        17.0,
-        65.0,
         10.0,
-        366.0,
-        252.0,
+        10.0,
+        10.0,
+        7.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
         4.0,
         8.0,
-        12.0,
-        122.0,
-        50.0,
-        55.0,
-        844.0,
-        50.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
         8.0,
-        1440.0,
-        31.0,
-        985.0,
+        10.0,
+        10.0,
+        10.0,
         6.0,
         9.0,
-        669.0,
-        17.0,
-        19.0,
-        771.0,
-        26.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
         8.0,
-        20.0,
-        80.0,
-        21.0,
-        368.0,
-        111.0,
-        1822.0,
-        541.0,
-        340.0,
-        1329.0,
-        266.0,
-        83.0,
-        48.0,
-        1329.0,
-        3814.0,
-        432.0,
-        1622.0,
-        163.0,
-        80.0,
-        260.0,
-        187.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
         7.0,
-        102.0,
-        122.0,
-        262.0,
-        17.0,
-        322.0,
-        2101.0,
-        438.0,
-        8238.0,
-        2145.0,
-        592.0,
-        936.0,
-        353.0,
-        375.0,
-        1775.0,
-        2019.0,
-        261.0,
-        1157.0,
-        9361.0,
-        940.0,
-        37.0,
-        40.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
+        10.0,
     ]
     criterion = tnn.BCEWithLogitsLoss(pos_weight=torch.as_tensor(wts, device=params.device))
     return criterion
 
 
-def avg_acc_gpu(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -> float:
+def avg_acc_gpu(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -> torch.Tensor:
     """Compute the accuracy, given the outputs and labels for all images.
     Args:
         outputs: Logits of the network
@@ -130,13 +130,27 @@ def avg_acc_gpu(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -
         average accuracy in [0,1]
     """
     outputs = (torch.sigmoid(outputs) > thr).to(torch.float32)
+    avg_acc = (outputs == labels).to(torch.float32).mean()
+    return avg_acc
+
+
+def match_gpu(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -> torch.Tensor:
+    """Compute the match accuracy, given the outputs and labels for all images.
+    Args:
+        outputs: Logits of the network
+        labels: Ground truth labels
+        thr: Threshold
+    Returns:
+        average match accuracy in [0,1]
+    """
+    outputs = (torch.sigmoid(outputs) > thr).to(torch.float32)
     avg_acc = (outputs == labels).all(1).to(torch.float32).mean()
-    return avg_acc.item()
+    return avg_acc
 
 
 def avg_f1_score_gpu(
     outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5, eps: float = 1e-7
-) -> float:
+) -> torch.Tensor:
     """Compute the F1 score, given the outputs and labels for all images.
     Args:
         outputs: Logits of the network
@@ -158,7 +172,37 @@ def avg_f1_score_gpu(
     wts = labels.sum(0)
     wtd_macro_f1 = (avg_f1 * wts).sum() / (wts.sum() + eps)
 
-    return wtd_macro_f1.item()
+    return wtd_macro_f1
+
+
+def avg_precision_gpu(
+    outputs: torch.Tensor, labels: torch.Tensor, step: float = 0.1, eps: float = 1e-7
+) -> torch.Tensor:
+    """Compute the average precision, given the outputs and labels for all images.
+    Args:
+        outputs: Logits of the network
+        labels: Ground truth labels
+        step: Step size
+        eps: Epsilon
+    Returns:
+        average precision
+    """
+    thr = torch.arange(0.0, 1.0 + step, step, device=labels.device).view(-1, 1, 1)
+    outputs = (torch.sigmoid(outputs).unsqueeze(0) > thr).to(torch.int32)
+
+    true_pos = (labels * outputs).sum(1)
+    false_pos = ((1 - labels) * outputs).sum(1)
+    false_neg = (labels * (1 - outputs)).sum(1)
+
+    precision = true_pos / (true_pos + false_pos + eps)
+    recall = true_pos / (true_pos + false_neg + eps)
+
+    recall[:-1, :] = recall[:-1, :] - recall[1:, :]
+    avg_precision = (recall * precision).sum(0)
+    wts = labels.sum(0)
+    wtd_avg_prec = (avg_precision * wts).sum() / (wts.sum() + eps)
+
+    return wtd_avg_prec
 
 
 def confusion_matrix(outputs: torch.Tensor, labels: torch.Tensor, thr: float = 0.5) -> torch.Tensor:
@@ -186,6 +230,8 @@ def get_metrics() -> Dict[str, Callable]:
     """Returns a dictionary of all the metrics to be used"""
     metrics: Dict[str, Callable] = {
         "accuracy": avg_acc_gpu,
+        "match_acc": match_gpu,
         "f1-score": avg_f1_score_gpu,
+        "avg_precision": avg_precision_gpu,
     }
     return metrics
