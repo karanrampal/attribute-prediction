@@ -6,12 +6,7 @@ numpy
 matplotlib
 scikit-learn
 pandas
-pyarrow
 # Deep learning
 torch
 torchvision
 tensorboard
-# GCP
-google-cloud-aiplatform
-# Others
-tqdm

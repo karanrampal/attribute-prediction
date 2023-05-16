@@ -13,7 +13,6 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "build",
     "pyyaml",
     "gcsfs",
     "matplotlib",
@@ -23,8 +22,6 @@ dependencies = [
     "torch",
     "torchvision",
     "tensorboard",
-    "google-cloud-aiplatform",
-    "tqdm",
 ]
 
 [project.urls]

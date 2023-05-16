@@ -1,8 +1,16 @@
 -r requirements.txt
 # System related
+build
 types-pyyaml
 ipykernel
 ipywidgets
+# Scipy stack
+pyarrow
+# GCP
+google-cloud-aiplatform
+kfp
+# Others
+tqdm
 # Testing
 pytest
 pytest-cov
