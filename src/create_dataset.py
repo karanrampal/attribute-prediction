@@ -59,6 +59,7 @@ def arg_parser() -> Tuple[argparse.Namespace, List[str]]:
             "product_sleeve_style",
             "product_neck_line_style",
             "product_collar_style",
+            "article_presentation_color_group",
         ],
         nargs="+",
         type=str,
