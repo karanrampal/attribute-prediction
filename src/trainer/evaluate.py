@@ -23,24 +23,21 @@ def args_parser() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--data_dir",
-        default="/gcs/hm_images",
+        default="gs://hm_images",
         help="Directory containing the dataset",
     )
     parser.add_argument(
         "--model_dir",
-        default=os.getenv("AIP_MODEL_DIR", "gs://attributes_models/base_model/model").replace(
-            "gs://", "/gcs/"
-        ),
+        default=os.getenv("AIP_MODEL_DIR", "gs://attributes_models/base_model/model"),
         help="Directory containing model",
     )
     parser.add_argument(
         "--tb_log_dir",
-        default=os.getenv(
-            "AIP_TENSORBOARD_LOG_DIR", "gs://attributes_models/base_model/logs"
-        ).replace("gs://", "/gcs/"),
+        default=os.getenv("AIP_TENSORBOARD_LOG_DIR", "gs://attributes_models/base_model/logs"),
         type=str,
         help="TensorBoard summarywriter directory",
     )
+    parser.add_argument("--locally", action="store_true", help="Evaluate locally")
     parser.add_argument(
         "--restore_file",
         default="last",
@@ -126,6 +123,11 @@ def main() -> None:
     """Main function"""
     args = args_parser()
     params = utils.Params(vars(args))
+
+    if not params.locally:
+        params.data_dir.replace("gs://", "/gcs/")
+        params.model_dir.replace("gs://", "/gcs/")
+        params.tb_log_dir.replace("gs://", "/gcs/")
 
     params.cuda = torch.cuda.is_available()
     utils.setup_distributed(params)
