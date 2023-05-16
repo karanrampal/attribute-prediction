@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Script to train a model in pytorch"""
 
 import argparse
