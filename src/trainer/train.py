@@ -77,18 +77,12 @@ def args_parser() -> argparse.Namespace:
         type=bool,
         help="Pin memory for faster load on GPU",
     )
-    parser.add_argument("--num_classes", default=72, type=int, help="Number of classes")
+    parser.add_argument("--num_classes", default=90, type=int, help="Number of classes")
     parser.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
     parser.add_argument("--learning_rate", default=0.001, type=float, help="Learning rate")
     parser.add_argument("--decay", default=0.0, type=float, help="Decay rate")
     parser.add_argument("--policy", default="steps", type=str, help="Learning rate scheduler")
-    parser.add_argument(
-        "--steps",
-        default=[
-            10,
-        ],
-        help="Steps for learning rate scheduler",
-    )
+    parser.add_argument("--steps", default=[10, 20], help="Steps for learning rate scheduler")
     parser.add_argument(
         "--save_summary_steps", default=500, type=int, help="Save after number of steps"
     )

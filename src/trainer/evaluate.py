@@ -70,7 +70,7 @@ def args_parser() -> argparse.Namespace:
         type=bool,
         help="Pin memory for faster load on GPU",
     )
-    parser.add_argument("--num_classes", default=72, type=int, help="Number of classes")
+    parser.add_argument("--num_classes", default=90, type=int, help="Number of classes")
     parser.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
     return parser.parse_args()
 
