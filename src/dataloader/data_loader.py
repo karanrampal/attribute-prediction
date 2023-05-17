@@ -74,12 +74,12 @@ def get_transform(is_train: bool, params: Params) -> tvt.Compose:
     if is_train:
         trans += [
             tvt.RandomHorizontalFlip(params.flip),
-            tvt.ColorJitter(
-                brightness=params.brightness,
-                contrast=params.contrast,
-                saturation=params.saturation,
-                hue=params.hue,
-            ),
+            # tvt.ColorJitter(
+            #     brightness=params.brightness,
+            #     contrast=params.contrast,
+            #     saturation=params.saturation,
+            #     hue=params.hue,
+            # ),
             tvt.RandomRotation(params.degree),
         ]
     return tvt.Compose(trans)
