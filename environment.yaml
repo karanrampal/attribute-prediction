@@ -7,7 +7,7 @@ dependencies:
   - pip
   - build
   - ipykernel
-  - ipywidget
+  - ipywidgets
   - gcsfs
   - pyyaml
   - types-pyyaml
