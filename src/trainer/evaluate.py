@@ -125,9 +125,9 @@ def main() -> None:
     params = utils.Params(vars(args))
 
     if not params.locally:
-        params.data_dir.replace("gs://", "/gcs/")
-        params.model_dir.replace("gs://", "/gcs/")
-        params.tb_log_dir.replace("gs://", "/gcs/")
+        params.data_dir = params.data_dir.replace("gs://", "/gcs/")
+        params.model_dir = params.model_dir.replace("gs://", "/gcs/")
+        params.tb_log_dir = params.tb_log_dir.replace("gs://", "/gcs/")
 
     params.cuda = torch.cuda.is_available()
     utils.setup_distributed(params)
