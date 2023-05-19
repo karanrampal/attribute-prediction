@@ -1,4 +1,4 @@
-![Product Attributes](https://github.com/karanrampal/attribute-prediction/actions/workflows/main.yaml/badge.svg)
+![Product Attributes](https://github.com/karanrampal/attribute-prediction/actions/workflows/main.yml/badge.svg)
 
 # Product Attribute Prediction
 Detect attributes of the dataset. This dataset consists of images by designers and our goal is to find attributes of these images.
